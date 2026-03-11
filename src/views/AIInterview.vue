@@ -1,146 +1,197 @@
 <template>
-  <div class="ai-interview-container">
-    <h2>AI面试模拟</h2>
-    <el-card class="interview-card">
-      <template #header>
-        <div class="card-header">
-          <h3>面试设置</h3>
-        </div>
-      </template>
-      <el-form :model="interviewForm" :rules="rules" ref="interviewFormRef" label-width="120px">
-        <el-form-item label="选择职位" prop="position">
-          <el-select v-model="interviewForm.position" placeholder="请选择职位">
-            <el-option label="前端开发实习生" value="frontend" />
-            <el-option label="后端开发实习生" value="backend" />
-            <el-option label="UI设计实习生" value="ui" />
-            <el-option label="产品经理实习生" value="product" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="面试类型" prop="type">
-          <el-radio-group v-model="interviewForm.type">
-            <el-radio label="technical">技术面试</el-radio>
-            <el-radio label="behavioral">行为面试</el-radio>
-            <el-radio label="comprehensive">综合面试</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="难度等级" prop="difficulty">
-          <el-radio-group v-model="interviewForm.difficulty">
-            <el-radio label="easy">简单</el-radio>
-            <el-radio label="medium">中等</el-radio>
-            <el-radio label="hard">困难</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="题目数量" prop="questionCount">
-          <el-input-number v-model="interviewForm.questionCount" :min="1" :max="10" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="startInterview" :loading="loading">
-            开始面试
-          </el-button>
-          <el-button @click="resetForm">
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+  <div class="interview-page">
+    <div class="page-inner">
+      <!-- 页面头部 -->
+      <div class="page-header">
+        <h1 class="page-title">
+          <span class="title-icon">🤖</span>
+          AI 面试模拟
+        </h1>
+        <p class="page-subtitle">选择职位和难度，与 AI 进行模拟面试练习</p>
+      </div>
 
-    <el-card v-if="interviewStarted" class="interview-card" style="margin-top: 20px;">
-      <template #header>
-        <div class="card-header">
-          <h3>面试进行中</h3>
-          <el-tag type="success">第 {{ currentQuestionIndex + 1 }} / {{ questions.length }} 题</el-tag>
+      <!-- 面试设置 -->
+      <div v-if="!interviewStarted && !interviewCompleted" class="setup-card">
+        <div class="setup-header">
+          <span class="setup-icon">⚙️</span>
+          <h2>面试设置</h2>
         </div>
-      </template>
-      <div class="question-container">
-        <div class="question-content">
-          <h4>问题：</h4>
-          <p>{{ currentQuestion }}</p>
-        </div>
-        <div class="answer-section">
-          <el-input
-            v-model="answer"
-            type="textarea"
-            :rows="6"
-            placeholder="请输入你的答案..."
-            :disabled="isAnswering"
-          />
-          <div class="answer-actions">
-            <el-button type="primary" @click="submitAnswer" :loading="isAnswering">
-              提交答案
-            </el-button>
-            <el-button @click="getHint" :disabled="isAnswering">
-              获取提示
-            </el-button>
+        <el-form
+          :model="interviewForm"
+          :rules="rules"
+          ref="interviewFormRef"
+          label-position="top"
+          class="setup-form"
+        >
+          <el-form-item label="选择职位" prop="position">
+            <el-select
+              v-model="interviewForm.position"
+              placeholder="请选择模拟职位"
+              class="position-select"
+              size="large"
+            >
+              <el-option label="前端开发实习生" value="frontend" />
+              <el-option label="后端开发实习生" value="backend" />
+              <el-option label="UI设计实习生" value="ui" />
+              <el-option label="产品经理实习生" value="product" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="面试类型" prop="type">
+            <div class="option-group">
+              <button
+                v-for="opt in typeOptions"
+                :key="opt.value"
+                type="button"
+                class="option-btn"
+                :class="{ active: interviewForm.type === opt.value }"
+                @click="interviewForm.type = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </el-form-item>
+          <el-form-item label="难度等级" prop="difficulty">
+            <div class="option-group">
+              <button
+                v-for="opt in difficultyOptions"
+                :key="opt.value"
+                type="button"
+                class="option-btn"
+                :class="{ active: interviewForm.difficulty === opt.value }"
+                @click="interviewForm.difficulty = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </el-form-item>
+          <el-form-item label="题目数量" prop="questionCount">
+            <el-input-number
+              v-model="interviewForm.questionCount"
+              :min="1"
+              :max="10"
+              size="large"
+            />
+          </el-form-item>
+          <div class="form-actions">
+            <button
+              class="start-btn"
+              :disabled="loading"
+              @click="startInterview"
+            >
+              {{ loading ? '准备中...' : '开始面试' }}
+            </button>
+            <button type="button" class="reset-btn" @click="resetForm">重置</button>
           </div>
+        </el-form>
+      </div>
+
+      <!-- 面试进行中 -->
+      <div v-if="interviewStarted && !interviewCompleted" class="question-card">
+        <div class="question-header">
+          <span class="progress-badge">第 {{ currentQuestionIndex + 1 }} / {{ questions.length }} 题</span>
         </div>
-        <div v-if="feedback" class="feedback-section">
-          <el-alert :title="feedback.title" :type="feedback.type" :description="feedback.content" show-icon />
+        <div class="question-body">
+          <div class="question-block">
+            <span class="question-label">问题</span>
+            <p class="question-text">{{ currentQuestion }}</p>
+          </div>
+          <div class="answer-block">
+            <el-input
+              v-model="answer"
+              type="textarea"
+              :rows="6"
+              placeholder="请输入你的答案..."
+              :disabled="isAnswering"
+              class="answer-input"
+            />
+            <div class="answer-actions">
+              <el-button type="primary" @click="submitAnswer" :loading="isAnswering">
+                提交答案
+              </el-button>
+              <el-button @click="getHint" :disabled="isAnswering">
+                获取提示
+              </el-button>
+              <el-button v-if="feedback" type="primary" @click="nextQuestion">
+                下一题
+              </el-button>
+            </div>
+          </div>
+          <div v-if="feedback" class="feedback-block">
+            <div class="feedback-inner" :class="feedback.type">
+              <span class="feedback-title">{{ feedback.title }}</span>
+              <p class="feedback-content">{{ feedback.content }}</p>
+            </div>
+          </div>
         </div>
       </div>
-    </el-card>
 
-    <el-card v-if="interviewCompleted" class="interview-card" style="margin-top: 20px;">
-      <template #header>
-        <div class="card-header">
-          <h3>面试结果</h3>
+      <!-- 面试结果 -->
+      <div v-if="interviewCompleted" class="result-card">
+        <div class="result-score">
+          <span class="score-num">{{ finalScore }}</span>
+          <span class="score-unit">分</span>
+          <el-tag class="score-tag" :type="getScoreType(finalScore)">
+            {{ getScoreLevel(finalScore) }}
+          </el-tag>
         </div>
-      </template>
-      <div class="result-container">
-        <div class="score-section">
-          <h4>综合评分</h4>
-          <div class="score-display">
-            <span class="score-number">{{ finalScore }}</span>
-            <span class="score-label">分</span>
+        <div class="result-details">
+          <div class="detail-row">
+            <span class="detail-label">回答题数</span>
+            <span class="detail-value">{{ answeredCount }} / {{ questions.length }}</span>
           </div>
-          <div class="score-level">
-            <el-tag :type="getScoreType(finalScore)">
-              {{ getScoreLevel(finalScore) }}
-            </el-tag>
+          <div class="detail-row">
+            <span class="detail-label">平均得分</span>
+            <span class="detail-value">{{ averageScore }} 分</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">用时</span>
+            <span class="detail-value">{{ duration }} 分钟</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">优势</span>
+            <span class="detail-value">{{ strengths.join('、') }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">待提升</span>
+            <span class="detail-value">{{ weaknesses.join('、') }}</span>
           </div>
         </div>
-        <div class="details-section">
-          <h4>详细分析</h4>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item label="回答问题数">
-              {{ answeredCount }} / {{ questions.length }}
-            </el-descriptions-item>
-            <el-descriptions-item label="平均得分">
-              {{ averageScore }} 分
-            </el-descriptions-item>
-            <el-descriptions-item label="用时">
-              {{ duration }} 分钟
-            </el-descriptions-item>
-            <el-descriptions-item label="优势">
-              {{ strengths.join('、') }}
-            </el-descriptions-item>
-            <el-descriptions-item label="待提升">
-              {{ weaknesses.join('、') }}
-            </el-descriptions-item>
-          </el-descriptions>
-        </div>
-        <div class="suggestions-section">
+        <div class="result-suggestions">
           <h4>改进建议</h4>
           <div v-for="(suggestion, index) in suggestions" :key="index" class="suggestion-item">
             <el-icon><Check /></el-icon>
             <span>{{ suggestion }}</span>
           </div>
         </div>
-        <div class="action-buttons">
-          <el-button type="primary" @click="restartInterview">
+        <div class="result-actions">
+          <el-button type="primary" size="large" @click="restartInterview">
             重新面试
           </el-button>
-          <el-button @click="exportReport">
+          <el-button size="large" @click="exportReport">
             导出报告
           </el-button>
         </div>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Check } from '@element-plus/icons-vue'
+
+const typeOptions = [
+  { label: '技术面试', value: 'technical' },
+  { label: '行为面试', value: 'behavioral' },
+  { label: '综合面试', value: 'comprehensive' },
+]
+
+const difficultyOptions = [
+  { label: '简单', value: 'easy' },
+  { label: '中等', value: 'medium' },
+  { label: '困难', value: 'hard' },
+]
 
 const interviewFormRef = ref(null)
 const loading = ref(false)
@@ -331,151 +382,356 @@ const exportReport = () => {
 </script>
 
 <style scoped>
-.ai-interview-container {
-  padding: 20px;
+.interview-page {
+  min-height: 100vh;
+  background: #f7f8fc;
+  padding: 32px 24px 64px;
 }
 
-.ai-interview-container h2 {
-  margin-bottom: 30px;
-  font-size: 24px;
-  color: #333;
-}
-
-.interview-card {
-  max-width: 800px;
+.page-inner {
+  max-width: 720px;
   margin: 0 auto;
-  transition: box-shadow 0.3s ease;
 }
 
-.interview-card:hover {
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+/* 页面头部 */
+.page-header {
+  margin-bottom: 32px;
 }
 
-.card-header {
+.page-title {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 8px;
 }
 
-.card-header h3 {
+.title-icon {
+  font-size: 28px;
+}
+
+.page-subtitle {
+  font-size: 15px;
+  color: #64748b;
   margin: 0;
-  font-size: 16px;
-  color: #333;
 }
 
-.question-container {
-  padding: 20px 0;
+/* 面试设置卡片 */
+.setup-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
 }
 
-.question-content {
-  margin-bottom: 30px;
+.setup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
-.question-content h4 {
-  font-size: 16px;
-  color: #333;
-  margin-bottom: 10px;
+.setup-icon {
+  font-size: 24px;
 }
 
-.question-content p {
+.setup-header h2 {
   font-size: 18px;
-  color: #666;
-  line-height: 1.6;
-  padding: 20px;
-  background: #f8f9fa;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.setup-form :deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+.setup-form :deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #475569;
+}
+
+.position-select {
+  width: 100%;
+}
+
+.position-select :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  padding: 4px 16px;
+}
+
+.position-select :deep(.el-input__wrapper:hover),
+.position-select :deep(.el-input.is-focus .el-input__wrapper) {
+  box-shadow: 0 0 0 1px #667eea inset;
+}
+
+.option-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.option-btn {
+  padding: 10px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.option-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.option-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.start-btn {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.start-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.start-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.reset-btn {
+  padding: 12px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 15px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+/* 面试进行中 */
+.question-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.question-header {
+  margin-bottom: 24px;
+}
+
+.progress-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  font-size: 14px;
+  font-weight: 500;
   border-radius: 8px;
 }
 
-.answer-section {
-  margin-bottom: 20px;
+.question-block {
+  margin-bottom: 28px;
+}
+
+.question-label {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.question-text {
+  font-size: 17px;
+  color: #1e293b;
+  line-height: 1.7;
+  margin: 0;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.answer-block {
+  margin-bottom: 24px;
+}
+
+.answer-input :deep(.el-textarea__inner) {
+  border-radius: 12px;
+  padding: 16px;
 }
 
 .answer-actions {
-  margin-top: 15px;
   display: flex;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
-.feedback-section {
-  margin-top: 20px;
+.feedback-block {
+  margin-top: 24px;
 }
 
-.result-container {
-  padding: 20px 0;
+.feedback-inner {
+  padding: 20px;
+  border-radius: 12px;
 }
 
-.score-section {
+.feedback-inner.success {
+  background: rgba(103, 194, 58, 0.1);
+  border: 1px solid rgba(103, 194, 58, 0.3);
+}
+
+.feedback-inner.warning {
+  background: rgba(230, 162, 60, 0.1);
+  border: 1px solid rgba(230, 162, 60, 0.3);
+}
+
+.feedback-inner.error {
+  background: rgba(245, 108, 108, 0.1);
+  border: 1px solid rgba(245, 108, 108, 0.3);
+}
+
+.feedback-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.feedback-content {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 面试结果 */
+.result-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.result-score {
   text-align: center;
   margin-bottom: 40px;
 }
 
-.score-section h4 {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 20px;
-}
-
-.score-display {
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.score-number {
-  font-size: 72px;
-  font-weight: bold;
+.score-num {
+  font-size: 64px;
+  font-weight: 700;
   color: #667eea;
+  line-height: 1;
 }
 
-.score-label {
+.score-unit {
   font-size: 24px;
-  color: #666;
+  color: #64748b;
+  margin-left: 4px;
 }
 
-.score-level {
-  margin-top: 10px;
+.score-tag {
+  display: block;
+  margin-top: 12px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.details-section {
-  margin-bottom: 40px;
+.result-details {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 32px;
 }
 
-.details-section h4 {
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.result-suggestions h4 {
   font-size: 16px;
-  color: #333;
-  margin-bottom: 20px;
-}
-
-.suggestions-section {
-  margin-bottom: 40px;
-}
-
-.suggestions-section h4 {
-  font-size: 16px;
-  color: #333;
-  margin-bottom: 20px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 16px;
 }
 
 .suggestion-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  margin-bottom: 10px;
 }
 
 .suggestion-item .el-icon {
   color: #67c23a;
-  font-size: 20px;
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.action-buttons {
+.result-actions {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
+  margin-top: 32px;
 }
 </style>
