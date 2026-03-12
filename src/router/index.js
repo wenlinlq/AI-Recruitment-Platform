@@ -103,11 +103,11 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
   scrollBehavior() {
-    return { top: 0 }
+    return { top: 0 };
   },
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const userStore = useUserStore();
   const isLoggedIn = userStore.isLoggedIn;
 
@@ -117,19 +117,16 @@ router.beforeEach((to, from, next) => {
 
   // 如果访问的是公开页面，直接放行
   if (isPublicPage) {
-    next();
-    return;
+    return true;
   }
 
   // 如果未登录且访问非公开页面，跳转到登录页
   if (!isLoggedIn) {
     ElMessage.warning("请先登录");
-    setTimeout(() => {
-      next("/login");
-    }, 1000);
+    return { path: "/login" };
   } else {
     // 如果已登录，放行
-    next();
+    return true;
   }
 });
 

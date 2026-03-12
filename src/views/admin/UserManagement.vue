@@ -305,7 +305,7 @@ const handleCurrentChange = (current) => {
 <style scoped>
 .user-management {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+
   padding: 40px;
 }
 
@@ -344,7 +344,6 @@ const handleCurrentChange = (current) => {
 }
 
 .search-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
@@ -374,7 +373,6 @@ const handleCurrentChange = (current) => {
 }
 
 .users-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
